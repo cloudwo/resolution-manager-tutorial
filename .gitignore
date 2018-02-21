@@ -3,6 +3,6 @@ Temp/
 Builds/
 Assets/LocalAssets/
 Assets/LocalAssets.meta
-.vs/velocity/v15/Server/
-.vs/velocity/v15/sqlite3/
-.vs/velocity/v15/sqlite3/storage.ide
+.vs/*/v15/Server/
+.vs/*/v15/sqlite3/
+.vs/*/v15/sqlite3/storage.ide
