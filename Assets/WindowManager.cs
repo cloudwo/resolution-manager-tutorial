@@ -25,14 +25,15 @@ public class WindowManager : MonoBehaviour
 
     #endregion
 
-    #region Screen Mode
+    #region Window Mode
 
     [SerializeField]
     private Toggle fullscreenToggle;
 
     [SerializeField]
     private Toggle windowedToggle;
-    bool currentWindowModeSetting;
+
+    private bool currentFullScreenEnabled;
 
     #endregion
 
@@ -41,10 +42,10 @@ public class WindowManager : MonoBehaviour
     private Coroutine resetVideoCoroutine;
 
     private int previousResolutionSetting;
-    private bool previousWindowModeSetting;
+    private bool previousFullScreenEnabled;
 
     [SerializeField]
-    private CanvasGroup resetVideoDialogue;
+    private GameObject resetVideoDialogue;
 
     [SerializeField]
     private Text resetVideoDialogueText;
@@ -61,44 +62,23 @@ public class WindowManager : MonoBehaviour
 
         currentResolutionIndex = PlayerPrefs.GetInt(RESOLUTION_PREF_KEY, resolutions.Length - 1);
         previousResolutionSetting = currentResolutionIndex;
-        SetResolution(resolutions[currentResolutionIndex]);
+        ApplyResolution(resolutions[currentResolutionIndex]);
 
-        currentWindowModeSetting = GetPlayerPrefBool(WINDOW_MODE_PREF_KEY, true);
+        currentFullScreenEnabled = GetPlayerPrefBool(WINDOW_MODE_PREF_KEY, true);
 
-        if (currentWindowModeSetting) fullscreenToggle.isOn = true;
-        else windowedToggle.isOn = true;
+        fullscreenToggle.isOn = currentFullScreenEnabled;
+        windowedToggle.isOn = !currentFullScreenEnabled;
 
-        previousWindowModeSetting = currentWindowModeSetting;
+        previousFullScreenEnabled = currentFullScreenEnabled;
 
-        Screen.fullScreen = currentWindowModeSetting;
-    }
-
-    private void OnEnable()
-    {
-        fullscreenToggle.onValueChanged.AddListener(OnFullScreenToggleValueChanged);
-    }
-
-    private void OnDisable()
-    {
-        fullscreenToggle.onValueChanged.RemoveListener(OnFullScreenToggleValueChanged);
+        Screen.fullScreen = currentFullScreenEnabled;
     }
 
     #endregion
 
+    #region Edit Resolution
+
     #region Resolution Cycling
-
-    public void SetCurrentResolution()
-    {
-        SetResolution(resolutions[currentResolutionIndex]);
-    }
-
-    public void SetResolution(Resolution resolution)
-    {
-        SetResolutionText(resolution);
-
-        Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
-        PlayerPrefs.SetInt(RESOLUTION_PREF_KEY, currentResolutionIndex);
-    }
 
     private void SetResolutionText(Resolution resolution)
     {
@@ -119,23 +99,48 @@ public class WindowManager : MonoBehaviour
 
     #endregion
 
-    #region Window Mode
+    #region Applying Resolution
 
-    #region Edit Current Window Mode
-
-    public void SetWindowMode(bool setting)
+    private void SetAndApplyResolution(int newResolutionIndex)
     {
-        currentWindowModeSetting = setting;
+        currentResolutionIndex = newResolutionIndex;
+        ApplyCurrentResolution();
     }
 
-    public void ApplyCurrentWindowMode()
+    private void ApplyCurrentResolution()
     {
-        ApplyWindowMode(currentWindowModeSetting);
+        ApplyResolution(resolutions[currentResolutionIndex]);
+    }
+
+    private void ApplyResolution(Resolution resolution)
+    {
+        SetResolutionText(resolution);
+
+        Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
+        PlayerPrefs.SetInt(RESOLUTION_PREF_KEY, currentResolutionIndex);
     }
 
     #endregion
 
-    #region Edit Window Mode
+    #endregion
+
+    #region Window Mode
+
+    #region Edit Current Window Mode
+
+    private void SetWindowMode(bool setting)
+    {
+        currentFullScreenEnabled = setting;
+    }
+
+    private void ApplyCurrentWindowMode()
+    {
+        ApplyWindowMode(currentFullScreenEnabled);
+    }
+
+    #endregion
+
+    #region Apply Window Mode
 
     private void SetAndApplyWindowMode(bool setting)
     {
@@ -151,8 +156,6 @@ public class WindowManager : MonoBehaviour
 
     #endregion
 
-    #endregion
-
     #region Toggle Event Listeners
 
     public void OnFullScreenToggleValueChanged(bool value)
@@ -162,39 +165,32 @@ public class WindowManager : MonoBehaviour
 
     #endregion
 
+    #endregion
+
     #region Safely Reset Video Settings
 
-    public void ResetAfterTime(int time)
+    private void ResetAfterTime(int time)
     {
-        ShowResetVideoSettingsDialogue();
-
         SetResetCountDownText(time);
+
+        ShowResetVideoSettingsDialogue();
 
         resetVideoCoroutine = StartCoroutine(CountDown(time,
             SetResetCountDownText, ResetVideoSettings));
     }
 
-    public void ResetVideoSettings()
+    private void ResetVideoSettings()
     {
         HideResetVideoSettingsDialogue();
-        currentResolutionIndex = previousResolutionSetting;
-        SetCurrentResolution();
+        SetAndApplyResolution(previousResolutionSetting);        
 
-        SetAndApplyWindowMode(previousWindowModeSetting);
+        SetAndApplyWindowMode(previousFullScreenEnabled);
 
-        if (previousWindowModeSetting)
-        {
-            fullscreenToggle.isOn = true;
-            windowedToggle.isOn = false;
-        }
-        else
-        {
-            fullscreenToggle.isOn = false;
-            windowedToggle.isOn = true;
-        }
+        fullscreenToggle.isOn = previousFullScreenEnabled;
+        windowedToggle.isOn = !previousFullScreenEnabled;
     }
 
-    public void ConfirmChangesAndCancelVideoReset()
+    private void ConfirmChangesAndCancelVideoReset()
     {
         if (resetVideoCoroutine != null) StopCoroutine(resetVideoCoroutine);
 
@@ -205,7 +201,7 @@ public class WindowManager : MonoBehaviour
     private void ConfirmVideoSettingChanges()
     {
         previousResolutionSetting = currentResolutionIndex;
-        previousWindowModeSetting = Screen.fullScreen;
+        previousFullScreenEnabled = Screen.fullScreen;
     }
 
     #region Video Settings Reset Dialogue Visual Actions
@@ -218,16 +214,12 @@ public class WindowManager : MonoBehaviour
 
     private void ShowResetVideoSettingsDialogue()
     {
-        resetVideoDialogue.alpha = 1;
-        resetVideoDialogue.blocksRaycasts = true;
-        resetVideoDialogue.interactable = true;
+        resetVideoDialogue.SetActive(true);
     }
 
     private void HideResetVideoSettingsDialogue()
     {
-        resetVideoDialogue.alpha = 0;
-        resetVideoDialogue.blocksRaycasts = false;
-        resetVideoDialogue.interactable = false;
+        resetVideoDialogue.SetActive(false);   
     }
 
     #endregion
@@ -238,19 +230,19 @@ public class WindowManager : MonoBehaviour
 
     #region PlayerPref Helpers
 
-    public bool GetPlayerPrefBool(string key)
+    private bool GetPlayerPrefBool(string key)
     {
         var value = PlayerPrefs.GetInt(key);
         return value > 0;
     }
 
-    public bool GetPlayerPrefBool(string key, bool defaultValue)
+    private bool GetPlayerPrefBool(string key, bool defaultValue)
     {
         if (!PlayerPrefs.HasKey(key)) return defaultValue;
         return GetPlayerPrefBool(key);
     }
 
-    public void SetPlayerPrefBool(string key, bool value)
+    private void SetPlayerPrefBool(string key, bool value)
     {
         int integerVersion = (value == true) ? 1 : 0;
         PlayerPrefs.SetInt(key, integerVersion);
@@ -260,13 +252,13 @@ public class WindowManager : MonoBehaviour
 
     #region Index Wrap Helpers
 
-    public int GetNextWrappedIndex<T>(IList<T> collection, int currentIndex)
+    private int GetNextWrappedIndex<T>(IList<T> collection, int currentIndex)
     {
         if (collection.Count < 1) return 0;
         return (currentIndex + 1) % collection.Count;
     }
 
-    public int GetPreviousWrappedIndex<T>(IList<T> collection, int currentIndex)
+    private int GetPreviousWrappedIndex<T>(IList<T> collection, int currentIndex)
     {
         if (collection.Count < 1) return 0;
         if ((currentIndex - 1) < 0) return collection.Count - 1;
@@ -287,4 +279,12 @@ public class WindowManager : MonoBehaviour
     }
 
     #endregion
+
+    public void ApplyChanges()
+    {
+        SetAndApplyResolution(currentResolutionIndex);
+        SetAndApplyWindowMode(currentFullScreenEnabled);
+
+        ResetAfterTime(5);
+    }
 }
